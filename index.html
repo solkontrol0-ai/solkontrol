@@ -1,49 +1,188 @@
-   
+
 <!DOCTYPE html>
 <html lang="uk">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SOL Control</title>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f6f7fb;
-      color: #222;
-    }
-    h1 { font-size: 24px; }
-    button {
-      width: 100%;
-      padding: 16px;
-      border: none;
-      border-radius: 10px;
-      background: #2868d8;
-      color: white;
-      font-size: 16px;
-    }
-    .status {
-      margin-top: 18px;
-      padding: 14px;
-      background: white;
-      border-radius: 10px;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SOL Control 0.2</title>
+<style>
+:root{--bg:#f3f5fa;--card:#fff;--text:#202638;--accent:#2868d8;--line:#dce2ed}
+body.dark{--bg:#121827;--card:#202b3d;--text:#f1f5ff;--line:#40506a}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
+header{background:#174da5;color:white;padding:22px 18px}
+header h1{margin:0;font-size:26px}
+header p{margin:5px 0;font-size:13px}
+main{padding:15px;max-width:650px;margin:auto}
+nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px}
+button,select,input{font:inherit}
+button{border:0;border-radius:10px;padding:13px;background:var(--accent);color:white;cursor:pointer}
+nav button{background:var(--card);color:var(--text);border:1px solid var(--line)}
+nav button.active{background:var(--accent);color:white}
+section{display:none}
+section.active{display:block}
+.card{background:var(--card);padding:17px;border-radius:14px;margin-bottom:12px;border:1px solid var(--line)}
+h2{margin:0 0 14px;font-size:21px}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);margin-bottom:10px}
+.item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
+.item span{overflow-wrap:anywhere}
+.small{font-size:13px;opacity:.75}
+.delete{background:#b33442;padding:9px}
+.switch{width:22px;height:22px;accent-color:#2868d8}
+footer{text-align:center;padding:15px;font-size:12px;opacity:.7}
+</style>
 </head>
 <body>
-  <h1>SOL Control</h1>
-  <p>Панель керування СОЛ — версія 0.1</p>
+<header>
+<h1>☀ SOL Control</h1>
+<p>Система Особистого Лідерства · Версія 0.2</p>
+</header>
+<main>
+<nav>
+<button class="active" onclick="show('tasks',this)">📋 Завдання</button>
+<button onclick="show('permissions',this)">🔐 Дозволи</button>
+<button onclick="show('priorities',this)">🎯 Пріоритети</button>
+<button onclick="show('settings',this)">⚙ Налаштування</button>
+</nav>
 
-  <button id="check">Перевірити панель</button>
-  <div class="status" id="status">Готово до роботи</div>
+<section id="tasks" class="active">
+<div class="card">
+<h2>Завдання СОЛ</h2>
+<input id="newTask" placeholder="Нове завдання">
+<button onclick="addTask()">Додати завдання</button>
+</div>
+<div class="card" id="taskList"></div>
+</section>
 
-  <script>
-    document.getElementById("check").onclick = function() {
-      const now = new Date().toLocaleTimeString("uk-UA");
-      document.getElementById("status").textContent =
-        "Панель працює. Час: " + now;
-    };
-  </script>
+<section id="permissions">
+<div class="card">
+<h2>Матриця дозволів</h2>
+<p class="small">Це тестові перемикачі. Вони ще не надають реальних повноважень ШІ.</p>
+<div id="permissionList"></div>
+</div>
+</section>
+
+<section id="priorities">
+<div class="card">
+<h2>Напрями розвитку</h2>
+<label>Першочерговий напрям</label>
+<select id="priority" onchange="savePriority()">
+<option value="control">Розвиток SOL Control</option>
+<option value="income">Цифрові продукти та доходи</option>
+<option value="memory">Пам'ять СОЛ</option>
+<option value="server">Майбутній сервер</option>
+</select>
+<p class="small">Пріоритет зберігається на цьому пристрої.</p>
+</div>
+</section>
+
+<section id="settings">
+<div class="card">
+<h2>Налаштування</h2>
+<div class="item">
+<span>Темна тема</span>
+<input class="switch" id="theme" type="checkbox" onchange="changeTheme()">
+</div>
+<p>Версія: 0.2</p>
+<p>Режим: локальна демонстрація</p>
+<p>З'єднання із СОЛ: ще не налаштовано</p>
+<button onclick="testPanel()">Перевірити панель</button>
+<p id="testStatus">Очікування перевірки</p>
+</div>
+</section>
+</main>
+<footer>SOL Control · Перша інтерактивна версія</footer>
+<script>
+const key="sol-control-v02-";
+function read(name,fallback){
+try{
+const value=localStorage.getItem(key+name);
+return value===null?fallback:JSON.parse(value);
+}catch(e){return fallback;}
+}
+function write(name,value){
+try{localStorage.setItem(key+name,JSON.stringify(value));}
+catch(e){alert("Не вдалося зберегти дані у браузері");}
+}
+function show(id,button){
+document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+document.getElementById(id).classList.add("active");
+document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
+button.classList.add("active");
+}
+let tasks=read("tasks",[]);
+if(!Array.isArray(tasks))tasks=[];
+function renderTasks(){
+const list=document.getElementById("taskList");
+list.replaceChildren();
+if(!tasks.length){list.textContent="Поки немає завдань";return;}
+tasks.forEach((task,i)=>{
+const row=document.createElement("div");
+row.className="item";
+const name=document.createElement("span");
+name.textContent=task.done?"✓ "+task.text:task.text;
+if(task.done)name.style.textDecoration="line-through";
+const actions=document.createElement("div");
+actions.style.display="flex";
+actions.style.gap="5px";
+const done=document.createElement("button");
+done.textContent=task.done?"↩":"✓";
+done.onclick=()=>{tasks[i].done=!tasks[i].done;write("tasks",tasks);renderTasks();};
+const del=document.createElement("button");
+del.textContent="×";
+del.className="delete";
+del.onclick=()=>{tasks.splice(i,1);write("tasks",tasks);renderTasks();};
+actions.append(done,del);
+row.append(name,actions);
+list.append(row);
+});
+}
+function addTask(){
+const input=document.getElementById("newTask");
+const value=input.value.trim();
+if(!value)return;
+tasks.push({text:value,done:false});
+write("tasks",tasks);
+input.value="";
+renderTasks();
+}
+const permissions=[
+["research","Дослідження та аналіз"],
+["drafts","Підготовка документів"],
+["proposals","Підготовка пропозицій"]
+];
+let allowed=read("permissions",{});
+if(!allowed||typeof allowed!=="object"||Array.isArray(allowed))allowed={};
+const permissionList=document.getElementById("permissionList");
+permissions.forEach(([id,name])=>{
+const row=document.createElement("div");
+row.className="item";
+const label=document.createElement("label");
+label.textContent=name;
+const check=document.createElement("input");
+check.type="checkbox";
+check.className="switch";
+check.checked=allowed[id]===true;
+check.onchange=()=>{allowed[id]=check.checked;write("permissions",allowed);};
+row.append(label,check);
+permissionList.append(row);
+});
+const priority=document.getElementById("priority");
+const savedPriority=read("priority","control");
+if([...priority.options].some(o=>o.value===savedPriority))priority.value=savedPriority;
+function savePriority(){write("priority",priority.value);}
+const theme=document.getElementById("theme");
+theme.checked=read("dark",false)===true;
+document.body.classList.toggle("dark",theme.checked);
+function changeTheme(){
+document.body.classList.toggle("dark",theme.checked);
+write("dark",theme.checked);
+}
+function testPanel(){
+document.getElementById("testStatus").textContent=
+"Панель працює. Час: "+new Date().toLocaleTimeString("uk-UA");
+}
+renderTasks();
+</script>
 </body>
 </html>
