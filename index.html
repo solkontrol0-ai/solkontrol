@@ -1,0 +1,49 @@
+   
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SOL Control</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f6f7fb;
+      color: #222;
+    }
+    h1 { font-size: 24px; }
+    button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 10px;
+      background: #2868d8;
+      color: white;
+      font-size: 16px;
+    }
+    .status {
+      margin-top: 18px;
+      padding: 14px;
+      background: white;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>SOL Control</h1>
+  <p>Панель керування СОЛ — версія 0.1</p>
+
+  <button id="check">Перевірити панель</button>
+  <div class="status" id="status">Готово до роботи</div>
+
+  <script>
+    document.getElementById("check").onclick = function() {
+      const now = new Date().toLocaleTimeString("uk-UA");
+      document.getElementById("status").textContent =
+        "Панель працює. Час: " + now;
+    };
+  </script>
+</body>
+</html>
