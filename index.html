@@ -4,185 +4,243 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SOL Control 0.2</title>
+<title>SOL Control 0.3</title>
 <style>
-:root{--bg:#f3f5fa;--card:#fff;--text:#202638;--accent:#2868d8;--line:#dce2ed}
-body.dark{--bg:#121827;--card:#202b3d;--text:#f1f5ff;--line:#40506a}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif}
-header{background:#174da5;color:white;padding:22px 18px}
-header h1{margin:0;font-size:26px}
-header p{margin:5px 0;font-size:13px}
-main{padding:15px;max-width:650px;margin:auto}
-nav{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:15px}
-button,select,input{font:inherit}
-button{border:0;border-radius:10px;padding:13px;background:var(--accent);color:white;cursor:pointer}
-nav button{background:var(--card);color:var(--text);border:1px solid var(--line)}
-nav button.active{background:var(--accent);color:white}
-section{display:none}
-section.active{display:block}
-.card{background:var(--card);padding:17px;border-radius:14px;margin-bottom:12px;border:1px solid var(--line)}
-h2{margin:0 0 14px;font-size:21px}
-input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--card);color:var(--text);margin-bottom:10px}
-.item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:12px 0;border-bottom:1px solid var(--line)}
-.item span{overflow-wrap:anywhere}
-.small{font-size:13px;opacity:.75}
-.delete{background:#b33442;padding:9px}
-.switch{width:22px;height:22px;accent-color:#2868d8}
-footer{text-align:center;padding:15px;font-size:12px;opacity:.7}
+:root{font-family:system-ui;background:#f3f5fa;color:#202638}
+body{margin:0}
+header{background:#174da5;color:white;padding:18px}
+main{max-width:750px;margin:auto;padding:14px}
+.card{background:white;border-radius:12px;padding:15px;margin:12px 0;box-shadow:0 1px 4px #0002}
+button,input,select,textarea{font:inherit;padding:10px;margin:4px;border:1px solid #bbc4d2;border-radius:8px}
+button{background:#174da5;color:white;cursor:pointer}
+nav{display:flex;flex-wrap:wrap}
+nav button{flex:1;min-width:120px}
+textarea,input{max-width:95%}
+textarea{width:95%;min-height:80px}
+.hidden{display:none}
+.dark{background:#121827;color:#eee}
+.dark .card{background:#202b3d}
+small{color:#68768c}
+.dark small{color:#b7c5d8}
 </style>
 </head>
 <body>
 <header>
-<h1>☀ SOL Control</h1>
-<p>Система Особистого Лідерства · Версія 0.2</p>
+<h2>SOL Control 0.3</h2>
+<div>Локальна панель керування · без підключення до ШІ</div>
 </header>
 <main>
-<nav>
-<button class="active" onclick="show('tasks',this)">📋 Завдання</button>
-<button onclick="show('permissions',this)">🔐 Дозволи</button>
-<button onclick="show('priorities',this)">🎯 Пріоритети</button>
-<button onclick="show('settings',this)">⚙ Налаштування</button>
-</nav>
-
-<section id="tasks" class="active">
-<div class="card">
-<h2>Завдання СОЛ</h2>
-<input id="newTask" placeholder="Нове завдання">
-<button onclick="addTask()">Додати завдання</button>
-</div>
-<div class="card" id="taskList"></div>
-</section>
-
-<section id="permissions">
-<div class="card">
-<h2>Матриця дозволів</h2>
-<p class="small">Це тестові перемикачі. Вони ще не надають реальних повноважень ШІ.</p>
-<div id="permissionList"></div>
-</div>
-</section>
-
-<section id="priorities">
-<div class="card">
-<h2>Напрями розвитку</h2>
-<label>Першочерговий напрям</label>
-<select id="priority" onchange="savePriority()">
-<option value="control">Розвиток SOL Control</option>
-<option value="income">Цифрові продукти та доходи</option>
-<option value="memory">Пам'ять СОЛ</option>
-<option value="server">Майбутній сервер</option>
-</select>
-<p class="small">Пріоритет зберігається на цьому пристрої.</p>
-</div>
-</section>
-
-<section id="settings">
-<div class="card">
-<h2>Налаштування</h2>
-<div class="item">
-<span>Темна тема</span>
-<input class="switch" id="theme" type="checkbox" onchange="changeTheme()">
-</div>
-<p>Версія: 0.2</p>
-<p>Режим: локальна демонстрація</p>
-<p>З'єднання із СОЛ: ще не налаштовано</p>
-<button onclick="testPanel()">Перевірити панель</button>
-<p id="testStatus">Очікування перевірки</p>
-</div>
-</section>
+<nav id="nav"></nav>
+<section id="content"></section>
 </main>
-<footer>SOL Control · Перша інтерактивна версія</footer>
 <script>
-const key="sol-control-v02-";
-function read(name,fallback){
+const KEY='sol_control_03';
+const OLD=['sol_control_02','solControl','sol_control_data'];
+let data={
+ tasks:[],
+ reports:[],
+ journal:[],
+ permissions:{
+  drafts:true,
+  tasks:true,
+  financial:false,
+  signing:false,
+  sending:false
+ },
+ priorities:'',
+ theme:'light'
+};
 try{
-const value=localStorage.getItem(key+name);
-return value===null?fallback:JSON.parse(value);
-}catch(e){return fallback;}
+ let v=localStorage.getItem(KEY);
+ if(v){
+  data={...data,...JSON.parse(v)};
+ }else{
+  for(let k of OLD){
+   let old=localStorage.getItem(k);
+   if(old){
+    let o=JSON.parse(old);
+    if(Array.isArray(o.tasks))data.tasks=o.tasks;
+    if(o.priorities)data.priorities=o.priorities;
+    break;
+   }
+  }
+ }
+}catch(e){
+ alert('Не вдалося прочитати старі дані. Їх не видалено.');
 }
-function write(name,value){
-try{localStorage.setItem(key+name,JSON.stringify(value));}
-catch(e){alert("Не вдалося зберегти дані у браузері");}
+const save=()=>localStorage.setItem(KEY,JSON.stringify(data));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({
+ '&':'&amp;',
+ '<':'&lt;',
+ '>':'&gt;',
+ '"':'&quot;',
+ "'":'&#39;'
+}[c]));
+const sections=[
+ 'Завдання','Звіти','Журнал',
+ 'Дозволи','Пріоритети','Налаштування'
+];
+let current='Завдання';
+function log(s){
+ data.journal.unshift({
+  date:new Date().toLocaleString('uk-UA'),
+  text:s
+ });
+ save();
 }
-function show(id,button){
-document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
-document.getElementById(id).classList.add("active");
-document.querySelectorAll("nav button").forEach(b=>b.classList.remove("active"));
-button.classList.add("active");
+function render(){
+ document.getElementById('nav').innerHTML=sections.map(s=>
+  `<button onclick="openSection('${s}')">${s}</button>`
+ ).join('');
+ let h='';
+ if(current==='Завдання'){
+  h='<div class="card"><h3>Нове завдання</h3><input id="task" placeholder="Назва завдання"><button onclick="addTask()">Додати</button></div>'+
+  data.tasks.map((t,i)=>`
+   <div class="card">
+   <b>${esc(typeof t==='string'?t:t.title||t.name||'Завдання')}</b>
+   <p>Статус: ${esc(t.status||'Нове')}</p>
+   <button onclick="statusTask(${i})">Змінити статус</button>
+   <button onclick="removeTask(${i})">Видалити</button>
+   </div>
+  `).join('');
+ }
+ if(current==='Звіти'){
+  h='<div class="card"><h3>Підсумковий звіт</h3><input id="reportTitle" placeholder="Назва"><textarea id="reportText" placeholder="Повний результат та висновки"></textarea><button onclick="addReport()">Зберегти звіт</button></div>'+
+  data.reports.map(r=>`
+   <div class="card">
+   <b>${esc(r.title)}</b>
+   <p>${esc(r.date)}</p>
+   <p style="white-space:pre-wrap">${esc(r.text)}</p>
+   </div>
+  `).join('');
+ }
+ if(current==='Журнал'){
+  h=data.journal.map(x=>`
+   <div class="card">
+   <small>${esc(x.date)}</small>
+   <p>${esc(x.text)}</p>
+   </div>
+  `).join('')||'<div class="card">Записів ще немає.</div>';
+ }
+ if(current==='Дозволи'){
+  let labels={
+   drafts:'Чернетки без запиту',
+   tasks:'Оновлення завдань без запиту',
+   financial:'Фінансові операції',
+   signing:'Підписання документів',
+   sending:'Надсилання третім особам'
+  };
+  h='<div class="card"><h3>Матриця дозволів</h3><p>Фінанси, підписання й надсилання потребують окремого підтвердження. Ці перемикачі лише записують правила, не надають ШІ реальних повноважень.</p>'+
+  Object.entries(labels).map(([k,v])=>`
+   <p><label>
+   <input type="checkbox" ${data.permissions[k]?'checked':''}
+   onchange="changePermission('${k}',this.checked)">
+   ${v}</label></p>
+  `).join('')+'</div>';
+ }
+ if(current==='Пріоритети'){
+  h=`<div class="card">
+   <h3>Пріоритетні напрями</h3>
+   <textarea id="priorities">${esc(data.priorities)}</textarea>
+   <button onclick="savePriorities()">Зберегти</button>
+   </div>`;
+ }
+ if(current==='Налаштування'){
+  h='<div class="card"><h3>Резервна копія</h3><button onclick="exportData()">Експортувати JSON</button><p>Імпорт із файлу:</p><input type="file" id="import" accept=".json,application/json"><button onclick="importData()">Імпортувати</button><p><button onclick="toggleTheme()">Світла / темна тема</button></p><small>Дані зберігаються лише в цьому браузері. Перед заміною пристрою експортуй копію.</small></div>';
+ }
+ document.getElementById('content').innerHTML=h;
+ document.body.className=data.theme==='dark'?'dark':'';
 }
-let tasks=read("tasks",[]);
-if(!Array.isArray(tasks))tasks=[];
-function renderTasks(){
-const list=document.getElementById("taskList");
-list.replaceChildren();
-if(!tasks.length){list.textContent="Поки немає завдань";return;}
-tasks.forEach((task,i)=>{
-const row=document.createElement("div");
-row.className="item";
-const name=document.createElement("span");
-name.textContent=task.done?"✓ "+task.text:task.text;
-if(task.done)name.style.textDecoration="line-through";
-const actions=document.createElement("div");
-actions.style.display="flex";
-actions.style.gap="5px";
-const done=document.createElement("button");
-done.textContent=task.done?"↩":"✓";
-done.onclick=()=>{tasks[i].done=!tasks[i].done;write("tasks",tasks);renderTasks();};
-const del=document.createElement("button");
-del.textContent="×";
-del.className="delete";
-del.onclick=()=>{tasks.splice(i,1);write("tasks",tasks);renderTasks();};
-actions.append(done,del);
-row.append(name,actions);
-list.append(row);
-});
+function openSection(s){
+ current=s;
+ render();
 }
 function addTask(){
-const input=document.getElementById("newTask");
-const value=input.value.trim();
-if(!value)return;
-tasks.push({text:value,done:false});
-write("tasks",tasks);
-input.value="";
-renderTasks();
+ let v=document.getElementById('task').value.trim();
+ if(!v)return;
+ data.tasks.push({title:v,status:'Нове'});
+ log('Створено завдання: '+v);
+ render();
 }
-const permissions=[
-["research","Дослідження та аналіз"],
-["drafts","Підготовка документів"],
-["proposals","Підготовка пропозицій"]
-];
-let allowed=read("permissions",{});
-if(!allowed||typeof allowed!=="object"||Array.isArray(allowed))allowed={};
-const permissionList=document.getElementById("permissionList");
-permissions.forEach(([id,name])=>{
-const row=document.createElement("div");
-row.className="item";
-const label=document.createElement("label");
-label.textContent=name;
-const check=document.createElement("input");
-check.type="checkbox";
-check.className="switch";
-check.checked=allowed[id]===true;
-check.onchange=()=>{allowed[id]=check.checked;write("permissions",allowed);};
-row.append(label,check);
-permissionList.append(row);
-});
-const priority=document.getElementById("priority");
-const savedPriority=read("priority","control");
-if([...priority.options].some(o=>o.value===savedPriority))priority.value=savedPriority;
-function savePriority(){write("priority",priority.value);}
-const theme=document.getElementById("theme");
-theme.checked=read("dark",false)===true;
-document.body.classList.toggle("dark",theme.checked);
-function changeTheme(){
-document.body.classList.toggle("dark",theme.checked);
-write("dark",theme.checked);
+function statusTask(i){
+ let t=data.tasks[i];
+ if(typeof t==='string'){
+  t=data.tasks[i]={title:t,status:'Нове'};
+ }
+ let states=['Нове','В роботі','Завершено'];
+ t.status=states[(states.indexOf(t.status)+1)%3];
+ log('Оновлено статус завдання');
+ render();
 }
-function testPanel(){
-document.getElementById("testStatus").textContent=
-"Панель працює. Час: "+new Date().toLocaleTimeString("uk-UA");
+function removeTask(i){
+ if(!confirm('Видалити завдання?'))return;
+ data.tasks.splice(i,1);
+ log('Видалено завдання');
+ render();
 }
-renderTasks();
+function addReport(){
+ let title=document.getElementById('reportTitle').value.trim();
+ let text=document.getElementById('reportText').value.trim();
+ if(!title||!text)return;
+ data.reports.unshift({
+  title,text,date:new Date().toLocaleString('uk-UA')
+ });
+ log('Створено підсумковий звіт: '+title);
+ render();
+}
+function changePermission(k,v){
+ if(['financial','signing','sending'].includes(k)&&v){
+  alert('Ці дії вимагають окремого підтвердження для кожної операції.');
+  render();
+  return;
+ }
+ data.permissions[k]=v;
+ log('Оновлено правило: '+k);
+ render();
+}
+function savePriorities(){
+ data.priorities=document.getElementById('priorities').value;
+ log('Оновлено пріоритети');
+ render();
+}
+function toggleTheme(){
+ data.theme=data.theme==='dark'?'light':'dark';
+ save();
+ render();
+}
+function exportData(){
+ let a=document.createElement('a');
+ let u=URL.createObjectURL(new Blob(
+  [JSON.stringify(data,null,2)],
+  {type:'application/json'}
+ ));
+ a.href=u;
+ a.download='sol-control-backup.json';
+ a.click();
+ setTimeout(()=>URL.revokeObjectURL(u),1000);
+}
+function importData(){
+ let f=document.getElementById('import').files[0];
+ if(!f)return;
+ let r=new FileReader();
+ r.onload=()=>{
+  try{
+   let d=JSON.parse(r.result);
+   if(!Array.isArray(d.tasks)||!Array.isArray(d.reports)){
+    throw Error('Формат');
+   }
+   if(confirm('Замінити поточні дані імпортованими?')){
+    data={...data,...d};
+    log('Імпортовано резервну копію');
+    render();
+   }
+  }catch(e){
+   alert('Некоректний файл резервної копії');
+  }
+ };
+ r.readAsText(f);
+}
+render();
 </script>
 </body>
 </html>
